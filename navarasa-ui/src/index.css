@@ -1,0 +1,63 @@
+body{
+  margin:0;
+  font-family: 'Inter', sans-serif;
+  background:#f7f9fc;
+  color:#1f2937;
+}
+
+/* Section spacing */
+
+.section{
+  padding:100px 20px;
+}
+
+/* Hero section */
+
+.hero{
+  background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  color:white;
+  text-align:center;
+  padding:120px 20px;
+}
+
+.hero-title{
+  font-size:60px;
+  font-weight:700;
+}
+
+.hero-subtitle{
+  margin-top:20px;
+  font-size:20px;
+  opacity:0.9;
+}
+
+.hero-button{
+  margin-top:40px;
+  background:white;
+  color:#4f46e5;
+  padding:14px 32px;
+  border-radius:30px;
+  font-weight:600;
+  border:none;
+  cursor:pointer;
+}
+
+/* cards */
+
+.card{
+  background:white;
+  padding:30px;
+  border-radius:12px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.08);
+  text-align:center;
+}
+
+/* footer */
+
+.footer{
+  background:#111827;
+  color:white;
+  text-align:center;
+  padding:30px;
+  margin-top:80px;
+}

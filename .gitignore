@@ -1,0 +1,8 @@
+navarasa-backend/venv/
+__pycache__/
+*.pyc
+uploads/
+gradcam_outputs/
+heatmap_outputs/
+shap_outputs/
+node_modules/

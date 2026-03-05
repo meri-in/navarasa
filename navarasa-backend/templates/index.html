@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Navarasa Emotion Detection</title>
+</head>
+<body>
+
+    <h2>Upload Image</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" required>
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if prediction %}
+
+        <h3>Predicted Emotion: {{ prediction }}</h3>
+        <h3>Confidence: {{ confidence }}%</h3>
+        <h3>Intensity: {{ intensity }}</h3>
+
+        <h3>Top 3 Predictions:</h3>
+        <ul>
+            {% for item in top3 %}
+                <li>{{ item.emotion }} - {{ item.prob }}%</li>
+            {% endfor %}
+        </ul>
+
+        <h3>Region Contribution:</h3>
+        <ul>
+            <li>Upper Face: {{ region_data.upper }}%</li>
+            <li>Middle Face: {{ region_data.middle }}%</li>
+            <li>Lower Face: {{ region_data.lower }}%</li>
+        </ul>
+
+        <h3>Model Explanation:</h3>
+        <p>{{ explanation }}</p>
+
+        <h4>Uploaded Image:</h4>
+        <img src="{{ image_path }}" width="300">
+
+        <h4>Grad-CAM:</h4>
+        <img src="{{ gradcam_path }}" width="300">
+
+    {% endif %}
+
+</body>
+</html>
