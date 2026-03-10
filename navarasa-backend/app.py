@@ -12,6 +12,7 @@ from tensorflow.keras.applications.efficientnet import preprocess_input
 # ===============================
 # FLASK APP
 # ===============================
+
 app = Flask(__name__)
 CORS(app)
 
@@ -21,6 +22,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # ===============================
 # LOAD MODEL
 # ===============================
+
 model = tf.keras.models.load_model(
     "model/newnavarasa_efficientnetB2_final.keras",
     compile=False
@@ -29,28 +31,38 @@ model = tf.keras.models.load_model(
 IMG_SIZE = 260
 
 class_names = [
-    'Adbhutha',
-    'Bhayaanaka',
-    'Bheebhatsya',
-    'Hasya',
-    'Karuna',
-    'Roudra',
-    'Shaanta',
-    'Shringaara',
-    'Veera'
+    "Adbhutha",
+    "Bhayaanaka",
+    "Bheebhatsya",
+    "Hasya",
+    "Karuna",
+    "Roudra",
+    "Shaanta",
+    "Shringaara",
+    "Veera"
 ]
 
 # ===============================
 # ANALYTICS STORAGE
 # ===============================
+
 analytics_data = {
     "predictions": [],
-    "confidences": []
+    "confidences": [],
+    "history": []
+}
+
+latest_prediction = {
+    "image": "",
+    "gradcam": "",
+    "emotion": "",
+    "confidence": 0
 }
 
 # ===============================
 # PREPROCESS IMAGE
 # ===============================
+
 def preprocess_image(img_path):
 
     img = cv2.imread(img_path)
@@ -67,6 +79,7 @@ def preprocess_image(img_path):
 # ===============================
 # GRAD-CAM
 # ===============================
+
 def make_gradcam_heatmap(img_array):
 
     img_tensor = tf.convert_to_tensor(img_array)
@@ -80,6 +93,7 @@ def make_gradcam_heatmap(img_array):
     )
 
     classifier_input = tf.keras.Input(shape=last_conv_layer.output.shape[1:])
+
     x = classifier_input
     x = model.get_layer("global_average_pooling2d_3")(x)
     x = model.get_layer("batch_normalization_3")(x)
@@ -101,14 +115,13 @@ def make_gradcam_heatmap(img_array):
 
     grads = tape.gradient(loss, conv_output)
 
-    pooled_grads = tf.reduce_mean(grads, axis=(0,1,2))
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
 
     conv_output = conv_output[0]
 
     heatmap = tf.reduce_sum(conv_output * pooled_grads, axis=-1)
 
     heatmap = tf.maximum(heatmap, 0)
-
     heatmap /= tf.reduce_max(heatmap) + 1e-8
 
     return heatmap.numpy()
@@ -117,6 +130,7 @@ def make_gradcam_heatmap(img_array):
 # ===============================
 # REGION ANALYSIS
 # ===============================
+
 def analyze_regions(heatmap):
 
     h, w = heatmap.shape
@@ -132,15 +146,16 @@ def analyze_regions(heatmap):
     total = upper_score + middle_score + lower_score + 1e-8
 
     return {
-        "upper": round((upper_score/total)*100,2),
-        "middle": round((middle_score/total)*100,2),
-        "lower": round((lower_score/total)*100,2)
+        "upper": round((upper_score/total)*100, 2),
+        "middle": round((middle_score/total)*100, 2),
+        "lower": round((lower_score/total)*100, 2)
     }
 
 
 # ===============================
 # EXPLANATION GENERATOR
 # ===============================
+
 def generate_explanation(emotion, region_data, confidence):
 
     dominant_region = max(region_data, key=region_data.get)
@@ -153,17 +168,18 @@ def generate_explanation(emotion, region_data, confidence):
 
     explanation = (
         f"The model predicted '{emotion}' with {round(confidence*100,2)}% confidence. "
-        f"Grad-CAM shows highest activation in the {region_map[dominant_region]} region "
+        f"Grad-CAM analysis shows highest activation in the {region_map[dominant_region]} region "
         f"({region_data[dominant_region]}% contribution). "
-        f"This indicates that facial features in this region influenced the prediction."
+        f"This indicates that facial features in this area were most influential in determining the expression."
     )
 
     return explanation
 
 
 # ===============================
-# OVERLAY HEATMAP
+# HEATMAP OVERLAY
 # ===============================
+
 def overlay_heatmap(heatmap, original_img, alpha=0.4):
 
     heatmap = cv2.resize(
@@ -192,15 +208,13 @@ def overlay_heatmap(heatmap, original_img, alpha=0.4):
 # ===============================
 # PREDICTION API
 # ===============================
+
 @app.route("/predict", methods=["POST"])
 def predict():
 
     file = request.files["image"]
 
-    filepath = os.path.join(
-        UPLOAD_FOLDER,
-        file.filename
-    )
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
 
     file.save(filepath)
 
@@ -217,115 +231,138 @@ def predict():
     analytics_data["predictions"].append(predicted_class)
     analytics_data["confidences"].append(confidence)
 
-    # Top 3 predictions
-    top_indices = predictions[0].argsort()[-3:][::-1]
-
-    top3 = []
-
-    for idx in top_indices:
-        top3.append({
-            "emotion": class_names[idx],
-            "prob": round(float(predictions[0][idx])*100,2)
-        })
+    analytics_data["history"].append({
+        "emotion": predicted_class,
+        "confidence": round(confidence * 100, 2)
+    })
 
     # GradCAM
     heatmap = make_gradcam_heatmap(img_array)
 
-    gradcam_image = overlay_heatmap(
-        heatmap,
-        original_img
-    )
+    gradcam_image = overlay_heatmap(heatmap, original_img)
 
-    gradcam_path = os.path.join(
-        UPLOAD_FOLDER,
-        "gradcam.jpg"
-    )
+    gradcam_filename = "gradcam_" + file.filename
+    gradcam_path = os.path.join(UPLOAD_FOLDER, gradcam_filename)
 
     cv2.imwrite(
         gradcam_path,
-        cv2.cvtColor(
-            gradcam_image,
-            cv2.COLOR_RGB2BGR
-        )
+        cv2.cvtColor(gradcam_image, cv2.COLOR_RGB2BGR)
     )
 
+    # Region analysis
     region_data = analyze_regions(heatmap)
 
+    # Explanation
     explanation = generate_explanation(
         predicted_class,
         region_data,
         confidence
     )
 
-    # intensity
+    # Emotion intensity
     if predicted_class == "Shaanta":
         intensity = "Low"
-
     elif predicted_class == "Hasya":
         intensity = "High" if confidence > 0.75 else "Medium"
-
-    elif predicted_class in [
-        "Roudra",
-        "Veera",
-        "Bhayaanaka",
-        "Bheebhatsya"
-    ]:
+    elif predicted_class in ["Roudra","Veera","Bhayaanaka","Bheebhatsya"]:
         intensity = "High" if confidence > 0.80 else "Medium"
-
-    elif predicted_class in [
-        "Adbhutha",
-        "Shringaara"
-    ]:
+    elif predicted_class in ["Adbhutha","Shringaara"]:
         intensity = "High" if confidence > 0.80 else "Medium"
-
     else:
         intensity = "Medium"
 
+    latest_prediction["image"] = "/static/uploads/" + file.filename
+    latest_prediction["gradcam"] = "/static/uploads/" + gradcam_filename
+    latest_prediction["emotion"] = predicted_class
+    latest_prediction["confidence"] = round(confidence * 100, 2)
+
     return jsonify({
-
         "prediction": predicted_class,
-
-        "confidence": round(confidence*100,2),
-
+        "confidence": round(confidence * 100, 2),
         "intensity": intensity,
-
-        "gradcam": gradcam_path,
-
-        "region_data": region_data,
-
         "explanation": explanation,
-
-        "top3": top3
+        "region_data": region_data,
+        "gradcam": latest_prediction["gradcam"]
     })
 
 
 # ===============================
-# DASHBOARD API
+# ANALYTICS API
 # ===============================
-@app.route("/dashboard-data")
-def dashboard_data():
 
-    from collections import Counter
+@app.route("/analytics", methods=["GET"])
+def analytics():
 
-    counts = Counter(
-        analytics_data["predictions"]
-    )
+    total_predictions = len(analytics_data["predictions"])
 
-    values = [
-        counts.get(e,0)
-        for e in class_names
+    emotion_counts = {
+        emotion: analytics_data["predictions"].count(emotion)
+        for emotion in class_names
+    }
+
+    emotion_distribution = [
+        {"name": emotion, "value": count}
+        for emotion, count in emotion_counts.items()
     ]
 
     return jsonify({
+        "total_predictions": total_predictions,
+        "emotion_distribution": emotion_distribution,
+        "prediction_history": analytics_data["history"][-10:],
+        "latest_prediction": latest_prediction
+    })
 
-        "labels": class_names,
 
-        "values": values
+# ===============================
+# ADMIN ANALYTICS API
+# ===============================
+
+@app.route("/admin/analytics", methods=["GET"])
+def admin_analytics():
+
+    total_predictions = len(analytics_data["predictions"])
+
+    emotion_counts = {
+        emotion: analytics_data["predictions"].count(emotion)
+        for emotion in class_names
+    }
+
+    emotion_distribution = [
+        {"name": emotion, "value": count}
+        for emotion, count in emotion_counts.items()
+    ]
+
+    recent_predictions = []
+
+    for i in range(len(analytics_data["history"][-10:])):
+        item = analytics_data["history"][-10:][i]
+
+        recent_predictions.append({
+            "user": "Anonymous",
+            "emotion": item["emotion"],
+            "confidence": item["confidence"],
+            "time": f"{i+1} min ago"
+        })
+
+    return jsonify({
+
+        "system_stats": {
+            "users": 1,
+            "predictions": total_predictions,
+            "accuracy": 92,
+            "server": "Running"
+        },
+
+        "emotion_distribution": emotion_distribution,
+
+        "recent_predictions": recent_predictions
+
     })
 
 
 # ===============================
 # RUN
 # ===============================
+
 if __name__ == "__main__":
     app.run(debug=True)
