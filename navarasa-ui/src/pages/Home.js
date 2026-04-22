@@ -13,6 +13,7 @@ import AnalyticsIcon from '@mui/icons-material/Analytics';
 import ArchitectureIcon from '@mui/icons-material/Architecture';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { keyframes } from '@mui/system';
 
 // Standardized Color Palette - Refined
@@ -56,15 +57,15 @@ const gradientFlow = keyframes`
 
 function Home() {
   const rasas = [
-    { img: "/images/sringaram.png", name: "Shringara", desc: "Love & Beauty" },
-    { img: "/images/hasyam.png", name: "Hasya", desc: "Laughter & Mirth" },
-    { img: "/images/karuna.png", name: "Karuna", desc: "Compassion" },
-    { img: "/images/rowdram.png", name: "Raudra", desc: "Anger" },
-    { img: "/images/veeram.png", name: "Veera", desc: "Heroism" },
-    { img: "/images/bhayanakam.png", name: "Bhayanaka", desc: "Fear" },
-    { img: "/images/bhibhatsam.png", name: "Bibhatsa", desc: "Disgust" },
-    { img: "/images/adbhutam.png", name: "Adbhuta", desc: "Wonder" },
-    { img: "/images/shantam.png", name: "Shanta", desc: "Peace" }
+    { img: "/images/sringaram.png", name: "Shringara", desc: "Love & Beauty", id: "shringara" },
+    { img: "/images/hasyam.png", name: "Hasya", desc: "Laughter & Mirth", id: "hasya" },
+    { img: "/images/karuna.png", name: "Karuna", desc: "Compassion", id: "karuna" },
+    { img: "/images/rowdram.png", name: "Raudra", desc: "Anger", id: "raudra" },
+    { img: "/images/veeram.png", name: "Veera", desc: "Heroism", id: "veera" },
+    { img: "/images/bhayanakam.png", name: "Bhayanaka", desc: "Fear", id: "bhayanaka" },
+    { img: "/images/bhibhatsam.png", name: "Bibhatsa", desc: "Disgust", id: "bibhatsa" },
+    { img: "/images/adbhutam.png", name: "Adbhuta", desc: "Wonder", id: "adbhuta" },
+    { img: "/images/shantam.png", name: "Shanta", desc: "Peace", id: "shanta" }
   ];
 
   return (
@@ -449,40 +450,66 @@ function Home() {
         </Container>
       </Box>
 
-      {/* 3. NAVARASA EXPLORER - Horizontal Scroll as requested */}
+      {/* 3. NAVARASA EXPLORER - Enhanced with link to details page */}
       <Container maxWidth="lg" sx={{ py: 15 }}>
-        <Box sx={{ mb: 6 }}>
-          <Slide direction="down" in timeout={800}>
-            <Chip
-              label="NAVARASA"
+        <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Slide direction="down" in timeout={800}>
+              <Chip
+                label="NAVARASA"
+                sx={{
+                  bgcolor: alpha(ACCENT, 0.1),
+                  color: ACCENT,
+                  fontWeight: 600,
+                  letterSpacing: 2,
+                  border: `1px solid ${alpha(ACCENT, 0.2)}`,
+                  mb: 3,
+                  px: 2,
+                }}
+              />
+            </Slide>
+            <Slide direction="up" in timeout={1000}>
+              <Typography 
+                variant="h2" 
+                sx={{ 
+                  fontWeight: 700, 
+                  fontSize: { xs: '2.5rem', md: '3.5rem' },
+                  background: "linear-gradient(135deg, #FFFFFF, #E0E7FF)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                The Nine Rasas
+              </Typography>
+            </Slide>
+          </Box>
+          
+          {/* Learn More Button */}
+          <Fade in timeout={1200}>
+            <Button
+              component={RouterLink}
+              to="/navarasa"
+              variant="outlined"
+              endIcon={<MenuBookIcon />}
               sx={{
-                bgcolor: alpha(ACCENT, 0.1),
-                color: ACCENT,
-                fontWeight: 600,
-                letterSpacing: 2,
-                border: `1px solid ${alpha(ACCENT, 0.2)}`,
-                mb: 3,
-                px: 2,
-              }}
-            />
-          </Slide>
-          <Slide direction="up" in timeout={1000}>
-            <Typography 
-              variant="h2" 
-              sx={{ 
-                fontWeight: 700, 
-                fontSize: { xs: '2.5rem', md: '3.5rem' },
-                background: "linear-gradient(135deg, #FFFFFF, #E0E7FF)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                borderRadius: '30px',
+                borderColor: alpha(ACCENT, 0.3),
+                color: TEXT_PRIMARY,
+                px: 4,
+                py: 1.5,
+                '&:hover': {
+                  borderColor: ACCENT,
+                  bgcolor: alpha(ACCENT, 0.1),
+                  transform: 'translateY(-2px)',
+                }
               }}
             >
-              The Nine Rasas
-            </Typography>
-          </Slide>
+              Explore Detailed Guide
+            </Button>
+          </Fade>
         </Box>
 
-        {/* Horizontal Scroll Container - Exactly like original */}
+        {/* Horizontal Scroll Container - Now with links */}
         <Box
           sx={{
             display: "flex",
@@ -510,6 +537,9 @@ function Home() {
           {rasas.map((rasa, i) => (
             <Zoom in timeout={1200 + i * 100} key={i}>
               <Box
+                component={RouterLink}
+                to="/navarasa"
+                state={{ initialRasa: rasa.id }}
                 sx={{
                   minWidth: "300px",
                   height: "400px",
@@ -519,6 +549,8 @@ function Home() {
                   cursor: "pointer",
                   transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                   border: `1px solid ${alpha('#FFFFFF', 0.1)}`,
+                  textDecoration: 'none',
+                  display: 'block',
                   '&:hover': {
                     transform: "scale(1.02) translateY(-8px)",
                     borderColor: ACCENT,
@@ -528,6 +560,10 @@ function Home() {
                     },
                     '& .rasa-overlay': {
                       opacity: 0.7,
+                    },
+                    '& .learn-more-indicator': {
+                      opacity: 1,
+                      transform: 'translateY(0)',
                     }
                   }
                 }}
@@ -559,6 +595,31 @@ function Home() {
                     transition: 'opacity 0.4s ease',
                   }}
                 />
+
+                {/* Learn More Indicator */}
+                <Box
+                  className="learn-more-indicator"
+                  sx={{
+                    position: 'absolute',
+                    top: 20,
+                    right: 20,
+                    bgcolor: alpha(ACCENT, 0.9),
+                    color: TEXT_PRIMARY,
+                    px: 2,
+                    py: 0.5,
+                    borderRadius: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    opacity: 0,
+                    transform: 'translateY(-10px)',
+                    transition: 'all 0.3s ease',
+                    backdropFilter: 'blur(5px)',
+                    border: `1px solid ${alpha('#FFFFFF', 0.2)}`,
+                    zIndex: 3,
+                  }}
+                >
+                  Learn More →
+                </Box>
 
                 {/* Content */}
                 <Box
@@ -613,6 +674,24 @@ function Home() {
               </Box>
             </Zoom>
           ))}
+        </Box>
+        
+        {/* Bottom CTA for mobile */}
+        <Box sx={{ display: { xs: 'block', md: 'none' }, textAlign: 'center', mt: 4 }}>
+          <Button
+            component={RouterLink}
+            to="/navarasa"
+            variant="contained"
+            endIcon={<MenuBookIcon />}
+            sx={{
+              background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_GLOW})`,
+              borderRadius: '30px',
+              px: 4,
+              py: 1.5,
+            }}
+          >
+            Explore Detailed Guide
+          </Button>
         </Box>
       </Container>
 
@@ -760,11 +839,11 @@ const ProfessionalFeatureCards = () => (
         { 
           icon: DatasetIcon, 
           title: "Dataset", 
-          value: "15K+", 
+          value: "10K+", 
           label: "Images",
           desc: "Curated Kathakali face dataset with expert annotations",
           color: "#10B981",
-          stats: "98.5% accuracy",
+          stats: "93% accuracy",
           gradient: "linear-gradient(135deg, rgba(16,185,129,0.15), transparent)"
         },
         { 
@@ -780,8 +859,8 @@ const ProfessionalFeatureCards = () => (
         { 
           icon: MemoryIcon, 
           title: "Architecture", 
-          value: "EfficientNet-v3", 
-          label: "Custom CNN",
+          value: "EfficientNet-B2", 
+          label: "CNN",
           desc: "Custom ResNet + Attention for facial micro-expressions",
           color: ACCENT,
           stats: "24M parameters",

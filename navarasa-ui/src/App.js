@@ -9,6 +9,7 @@ import Predict from "./pages/Predict";
 import Dashboard from "./pages/Dashboard";
 import About from "./pages/About";
 import AdminDashboard from "./pages/AdminDashboard";
+import NavarasaDetails from "./pages/NavarasaDetails"; // Import the new page
 
 function App() {
   return (
@@ -26,6 +27,9 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
 
         <Route path="/about" element={<About />} />
+
+        {/* New Navarasa Details Page */}
+        <Route path="/navarasa" element={<NavarasaDetails />} />
 
         {/* Hidden Admin Page (no link in navbar) */}
         <Route path="/admin" element={<AdminDashboard />} />

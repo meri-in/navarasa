@@ -8,6 +8,7 @@ const DEEP_BLACK = "#000000"; // Pure black for the background
 function Navbar() {
   const navItems = [
     { name: "Home", path: "/" },
+    { name: "Navarasa", path: "/navarasa" }, // Added Navarasa here
     { name: "Predict", path: "/predict" },
     { name: "Dashboard", path: "/dashboard" },
     { name: "About", path: "/about" }
@@ -89,6 +90,9 @@ function Navbar() {
                     color: "white"
                   },
 
+                  // REMOVED THE SPECIAL PURPLE STYLING FOR NAVARASA
+                  // Now Navarasa will use the same styles as other links
+
                   // Hover/Active Underline Effect
                   "&::after": {
                     content: '""',
@@ -98,7 +102,7 @@ function Navbar() {
                     left: "50%",
                     transform: "translateX(-50%)",
                     bottom: -8,
-                    background: ACCENT,
+                    background: "white", // Changed to always use white for all links
                     transition: "0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     borderRadius: "10px"
                   },
@@ -108,7 +112,7 @@ function Navbar() {
                   },
 
                   "&.active": {
-                    color: "white"
+                    color: "white" // All links become white when active
                   },
 
                   "&.active::after": {
