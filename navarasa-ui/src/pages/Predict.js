@@ -1,4 +1,4 @@
-// ✅ FIXED GradCAM + Image Preview - Complete Professional Predict.js
+// ✅ FIXED GRADCAM + Image Preview - Complete Professional Predict.js
 import React, { useState, useCallback, useEffect } from "react";
 import {
   Container,
@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogActions,
   Avatar,
+  Snackbar,
 } from "@mui/material";
 import {
   CloudUpload as CloudUploadIcon,
@@ -52,6 +53,7 @@ import {
   Insights as InsightsIcon,
   Science as ScienceIcon,
 } from "@mui/icons-material";
+import PredictionStorage from "./storage";
 
 // Styled components
 const GlassContainer = styled(Paper)(({ theme }) => ({
@@ -141,6 +143,8 @@ function Predict() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [detectedFeatures, setDetectedFeatures] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   const handleImageUpload = useCallback((e) => {
     const file = e.target.files?.[0];
@@ -175,6 +179,20 @@ function Predict() {
     if (preview) URL.revokeObjectURL(preview);
   }, [preview]);
 
+  const savePredictionToStorage = (emotion, confidenceValue) => {
+    const prediction = {
+      id: Date.now(),
+      emotion: emotion,
+      confidence: confidenceValue,
+      time: new Date().toLocaleTimeString(),
+      date: new Date().toLocaleDateString(),
+      timestamp: new Date().toISOString(),
+    };
+    PredictionStorage.savePrediction(prediction);
+    setSnackbarMessage(`Prediction saved! Total: ${PredictionStorage.getTotalCount()}`);
+    setSnackbarOpen(true);
+  };
+
   const predictEmotion = async () => {
     if (!image) return;
     
@@ -206,6 +224,9 @@ function Predict() {
       setIntensity(data.intensity || 'Medium');
       setExplanation(data.explanation || 'CNN feature analysis complete. The model has identified key facial landmarks and micro-expressions consistent with this Rasa classification.');
       setShowAnalysis(true);
+      
+      // Save prediction to storage
+      savePredictionToStorage(data.prediction, data.confidence);
       
       // Simulate detected features (in real app, these would come from backend)
       setDetectedFeatures([
@@ -290,6 +311,10 @@ function Predict() {
       case 'low': return '#10B981';
       default: return '#6366F1';
     }
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   return (
@@ -987,6 +1012,17 @@ function Predict() {
           </Box>
         </Stack>
       </Backdrop>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity="success" sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

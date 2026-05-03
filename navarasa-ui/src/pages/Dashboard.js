@@ -68,6 +68,30 @@ import {
   ComposedChart,
 } from "recharts";
 
+// Prediction Storage class
+class PredictionStorage {
+  static savePrediction(prediction) {
+    const predictions = this.getPredictions();
+    predictions.push(prediction);
+    localStorage.setItem('navarasa_predictions', JSON.stringify(predictions));
+    window.dispatchEvent(new Event('predictionAdded'));
+  }
+
+  static getPredictions() {
+    const stored = localStorage.getItem('navarasa_predictions');
+    return stored ? JSON.parse(stored) : [];
+  }
+
+  static clearPredictions() {
+    localStorage.removeItem('navarasa_predictions');
+    window.dispatchEvent(new Event('predictionAdded'));
+  }
+
+  static getTotalCount() {
+    return this.getPredictions().length;
+  }
+}
+
 // Clean emotion data without Hindi
 const EMOTIONS = {
   Shringara: { color: "#FF6B6B", icon: "🌸", description: "Love, Beauty" },
@@ -101,54 +125,93 @@ function Dashboard() {
   const [trendData, setTrendData] = useState([]);
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
-  // Sample data based on your image
-  useEffect(() => {
-    // Emotion distribution data
-    const sampleDistribution = [
-      { name: "Adbhuta", value: 50, displayName: "Adbhuta" },
-      { name: "Bibhatsa", value: 17, displayName: "Bibhatsa" },
-      { name: "Raudra", value: 33, displayName: "Raudra" },
-      { name: "Bhayanaka", value: 0, displayName: "Bhayanaka" },
-      { name: "Shringara", value: 0, displayName: "Shringara" },
-      { name: "Hasya", value: 0, displayName: "Hasya" },
-      { name: "Karuna", value: 0, displayName: "Karuna" },
-      { name: "Veera", value: 0, displayName: "Veera" },
-      { name: "Shanta", value: 0, displayName: "Shanta" },
-    ].filter(item => item.value > 0);
-
-    setDistribution(sampleDistribution);
-    setTotalPredictions(6); // Total predictions from your image (4 high + 2 low)
-
-    // Sample history data matching your image
-    const sampleHistory = [
-      { time: "9:12:25 pm", emotion: "Bibhatsa", confidence: 39.99 },
-      { time: "9:12:25 pm", emotion: "Bibhatsa", confidence: 39.99 },
-      { time: "9:12:25 pm", emotion: "Adbhuta", confidence: 85.50 },
-      { time: "9:10:25 pm", emotion: "Adbhuta", confidence: 92.00 },
-      { time: "9:08:25 pm", emotion: "Raudra", confidence: 88.00 },
-      { time: "9:06:25 pm", emotion: "Raudra", confidence: 82.00 },
-    ];
+  // Function to update distribution based on history
+  const updateDistribution = (historyData) => {
+    if (historyData.length === 0) {
+      setDistribution([]);
+      return;
+    }
     
-    setHistory(sampleHistory);
-
-    // Generate trend data for the chart
-    const times = ["9:06:25 pm", "9:08:25 pm", "9:10:25 pm", "9:12:25 pm"];
-    const trendPoints = [
-      { time: "9:06:25 pm", confidence: 82, emotion: "Raudra" },
-      { time: "9:08:25 pm", confidence: 88, emotion: "Raudra" },
-      { time: "9:10:25 pm", confidence: 92, emotion: "Adbhuta" },
-      { time: "9:12:25 pm", confidence: 39.99, emotion: "Bibhatsa" },
-      { time: "9:12:25 pm", confidence: 39.99, emotion: "Bibhatsa" },
-      { time: "9:12:25 pm", confidence: 85.50, emotion: "Adbhuta" },
-    ];
-    setTrendData(trendPoints);
-    
-    setLatest({
-      emotion: "Bibhatsa",
-      confidence: 39.99,
-      time: "9:12:25 pm",
+    const emotionCount = {};
+    historyData.forEach(item => {
+      emotionCount[item.emotion] = (emotionCount[item.emotion] || 0) + 1;
     });
+    
+    const total = historyData.length;
+    const newDistribution = Object.keys(emotionCount).map(emotion => ({
+      name: emotion,
+      value: (emotionCount[emotion] / total) * 100,
+      displayName: emotion
+    }));
+    
+    setDistribution(newDistribution);
+  };
+
+  // Function to update trend data based on history
+  const updateTrendData = (historyData) => {
+    if (historyData.length === 0) {
+      setTrendData([]);
+      return;
+    }
+    
+    // Get last 10 predictions for trend
+    const recentPredictions = [...historyData].slice(-10);
+    setTrendData(recentPredictions);
+  };
+
+  // Load predictions from storage
+  const loadPredictions = () => {
+    const savedPredictions = PredictionStorage.getPredictions();
+    if (savedPredictions.length > 0) {
+      // Convert saved predictions to history format
+      const historyData = savedPredictions.map(pred => ({
+        time: pred.time,
+        emotion: pred.emotion,
+        confidence: pred.confidence
+      }));
+      setHistory(historyData);
+      setTotalPredictions(savedPredictions.length);
+      
+      // Update distribution based on saved predictions
+      updateDistribution(historyData);
+      updateTrendData(historyData);
+      
+      // Set latest prediction
+      if (savedPredictions.length > 0) {
+        const lastPred = savedPredictions[savedPredictions.length - 1];
+        setLatest({
+          emotion: lastPred.emotion,
+          confidence: lastPred.confidence,
+          time: lastPred.time,
+        });
+      }
+    } else {
+      setHistory([]);
+      setTotalPredictions(0);
+      setDistribution([]);
+      setTrendData([]);
+      setLatest({});
+    }
+  };
+
+  // Initial load and listen for new predictions
+  useEffect(() => {
+    loadPredictions();
+    
+    // Listen for new predictions
+    window.addEventListener('predictionAdded', loadPredictions);
+    
+    return () => {
+      window.removeEventListener('predictionAdded', loadPredictions);
+    };
   }, []);
+
+  // Update totalPredictions whenever history changes
+  useEffect(() => {
+    setTotalPredictions(history.length);
+    updateDistribution(history);
+    updateTrendData(history);
+  }, [history]);
 
   // Calculate confidence distribution
   const confidenceDistribution = {
@@ -331,7 +394,13 @@ function Dashboard() {
 
                 <Box sx={{ height: 280 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    {chartType === "pie" ? (
+                    {distribution.length === 0 ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                        <Typography variant="body1" sx={{ color: alpha('#FFFFFF', 0.5) }}>
+                          No predictions yet
+                        </Typography>
+                      </Box>
+                    ) : chartType === "pie" ? (
                       <PieChart>
                         <Pie
                           data={distribution}
@@ -403,7 +472,7 @@ function Dashboard() {
                   {distribution.map((item, index) => (
                     <Chip
                       key={index}
-                      label={`${item.name} ${item.value}%`}
+                      label={`${item.name} ${item.value.toFixed(0)}%`}
                       size="small"
                       sx={{
                         bgcolor: alpha(EMOTIONS[item.name]?.color || COLORS[index], 0.15),
@@ -412,6 +481,11 @@ function Dashboard() {
                       }}
                     />
                   ))}
+                  {distribution.length === 0 && (
+                    <Typography variant="caption" sx={{ color: alpha('#FFFFFF', 0.5) }}>
+                      No data available
+                    </Typography>
+                  )}
                 </Box>
               </Paper>
             </Slide>
@@ -434,7 +508,7 @@ function Dashboard() {
                     Confidence Trends
                   </Typography>
                   <Chip 
-                    label="Last 24 hours" 
+                    label="Recent Predictions" 
                     size="small"
                     sx={{ 
                       bgcolor: alpha('#10B981', 0.15),
@@ -473,53 +547,61 @@ function Dashboard() {
 
                 <Box sx={{ height: 200 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
-                      data={trendData}
-                      onMouseMove={(e) => {
-                        if (e.activePayload) {
-                          setHoveredPoint(e.activePayload[0].payload);
-                        }
-                      }}
-                      onMouseLeave={() => setHoveredPoint(null)}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke={alpha('#FFFFFF', 0.1)} />
-                      <XAxis 
-                        dataKey="time" 
-                        stroke={alpha('#FFFFFF', 0.5)}
-                        tick={{ fontSize: 10 }}
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                      />
-                      <YAxis 
-                        stroke={alpha('#FFFFFF', 0.5)}
-                        domain={[0, 100]}
-                        tick={{ fontSize: 10 }}
-                      />
-                      <RechartsTooltip content={<CustomTooltip />} />
-                      
-                      {/* Confidence lines for each emotion */}
-                      <Line
-                        type="monotone"
-                        dataKey="confidence"
-                        stroke="#10B981"
-                        strokeWidth={2}
-                        dot={(props) => {
-                          const { cx, cy, payload } = props;
-                          return (
-                            <circle
-                              cx={cx}
-                              cy={cy}
-                              r={6}
-                              fill={getEmotionColor(payload.emotion)}
-                              stroke={alpha('#FFFFFF', 0.5)}
-                              strokeWidth={1}
-                            />
-                          );
+                    {trendData.length === 0 ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                        <Typography variant="body1" sx={{ color: alpha('#FFFFFF', 0.5) }}>
+                          No trend data available
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <ComposedChart
+                        data={trendData}
+                        onMouseMove={(e) => {
+                          if (e.activePayload) {
+                            setHoveredPoint(e.activePayload[0].payload);
+                          }
                         }}
-                      />
-                    </ComposedChart>
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke={alpha('#FFFFFF', 0.1)} />
+                        <XAxis 
+                          dataKey="time" 
+                          stroke={alpha('#FFFFFF', 0.5)}
+                          tick={{ fontSize: 10 }}
+                          interval={0}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                        />
+                        <YAxis 
+                          stroke={alpha('#FFFFFF', 0.5)}
+                          domain={[0, 100]}
+                          tick={{ fontSize: 10 }}
+                        />
+                        <RechartsTooltip content={<CustomTooltip />} />
+                        
+                        {/* Confidence lines for each emotion */}
+                        <Line
+                          type="monotone"
+                          dataKey="confidence"
+                          stroke="#10B981"
+                          strokeWidth={2}
+                          dot={(props) => {
+                            const { cx, cy, payload } = props;
+                            return (
+                              <circle
+                                cx={cx}
+                                cy={cy}
+                                r={6}
+                                fill={getEmotionColor(payload.emotion)}
+                                stroke={alpha('#FFFFFF', 0.5)}
+                                strokeWidth={1}
+                              />
+                            );
+                          }}
+                        />
+                      </ComposedChart>
+                    )}
                   </ResponsiveContainer>
                 </Box>
 
@@ -749,61 +831,71 @@ function Dashboard() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {filteredHistory.map((row, index) => (
-                          <TableRow 
-                            key={index}
-                            sx={{
-                              '&:hover': { bgcolor: alpha('#FFFFFF', 0.03) },
-                              '& td': { 
-                                color: '#FFFFFF',
-                                borderBottom: `1px solid ${alpha('#FFFFFF', 0.05)}`,
-                                fontSize: '0.875rem',
-                              },
-                            }}
-                          >
-                            <TableCell>{row.time}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={row.emotion}
-                                size="small"
-                                sx={{
-                                  bgcolor: alpha(getEmotionColor(row.emotion), 0.15),
-                                  color: getEmotionColor(row.emotion),
-                                  height: 24,
-                                  '& .MuiChip-label': { px: 1, fontSize: '0.75rem' },
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Stack direction="row" alignItems="center" spacing={1}>
-                                <LinearProgress
-                                  variant="determinate"
-                                  value={row.confidence}
-                                  sx={{
-                                    width: 50,
-                                    height: 4,
-                                    borderRadius: 2,
-                                    bgcolor: alpha('#FFFFFF', 0.1),
-                                    '& .MuiLinearProgress-bar': {
-                                      bgcolor: getIntensityColor(row.confidence),
-                                      borderRadius: 2,
-                                    },
-                                  }}
-                                />
-                                <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                  {row.confidence.toFixed(1)}%
-                                </Typography>
-                              </Stack>
-                            </TableCell>
-                            <TableCell>
-                              {row.confidence >= 80 ? 
-                                <CheckCircleIcon sx={{ color: '#4CAF50', fontSize: 18 }} /> :
-                               row.confidence >= 60 ? 
-                                <InfoIcon sx={{ color: '#FF9800', fontSize: 18 }} /> :
-                                <WarningIcon sx={{ color: '#F44336', fontSize: 18 }} />}
+                        {filteredHistory.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} align="center">
+                              <Typography variant="body2" sx={{ color: alpha('#FFFFFF', 0.5), py: 4 }}>
+                                No predictions yet. Go to Predict page to analyze emotions.
+                              </Typography>
                             </TableCell>
                           </TableRow>
-                        ))}
+                        ) : (
+                          filteredHistory.map((row, index) => (
+                            <TableRow 
+                              key={index}
+                              sx={{
+                                '&:hover': { bgcolor: alpha('#FFFFFF', 0.03) },
+                                '& td': { 
+                                  color: '#FFFFFF',
+                                  borderBottom: `1px solid ${alpha('#FFFFFF', 0.05)}`,
+                                  fontSize: '0.875rem',
+                                },
+                              }}
+                            >
+                              <TableCell>{row.time}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={row.emotion}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: alpha(getEmotionColor(row.emotion), 0.15),
+                                    color: getEmotionColor(row.emotion),
+                                    height: 24,
+                                    '& .MuiChip-label': { px: 1, fontSize: '0.75rem' },
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Stack direction="row" alignItems="center" spacing={1}>
+                                  <LinearProgress
+                                    variant="determinate"
+                                    value={row.confidence}
+                                    sx={{
+                                      width: 50,
+                                      height: 4,
+                                      borderRadius: 2,
+                                      bgcolor: alpha('#FFFFFF', 0.1),
+                                      '& .MuiLinearProgress-bar': {
+                                        bgcolor: getIntensityColor(row.confidence),
+                                        borderRadius: 2,
+                                      },
+                                    }}
+                                  />
+                                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                    {row.confidence.toFixed(1)}%
+                                  </Typography>
+                                </Stack>
+                              </TableCell>
+                              <TableCell>
+                                {row.confidence >= 80 ? 
+                                  <CheckCircleIcon sx={{ color: '#4CAF50', fontSize: 18 }} /> :
+                                 row.confidence >= 60 ? 
+                                  <InfoIcon sx={{ color: '#FF9800', fontSize: 18 }} /> :
+                                  <WarningIcon sx={{ color: '#F44336', fontSize: 18 }} />}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </Box>
